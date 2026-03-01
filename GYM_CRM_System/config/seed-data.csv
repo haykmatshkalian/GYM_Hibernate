@@ -1,0 +1,12 @@
+# type,id,firstName,lastName,active|specialization|...,date,minutes
+trainee,7d6b3232-f648-495e-aecf-0d6b6ceb958b,Vardan,Vardaynyan,true
+trainee,T001,John,Smith,true
+trainee,T002,Emily,Stone,true
+trainee,d3f526c5-6246-47b3-9ec5-827f1b107a2f,Hayk,Matshkalyan,true
+trainee,ff93b006-3157-4061-b1d3-dad88e6c0237,Hayk,Matshkalyan,true
+trainer,7026ec07-1d61-429e-b36f-871bf15d4caf,Hayk,Matshkalyan,some
+trainer,R001,Sarah,Connor,Strength
+trainer,R002,John,Smith,Cardio
+training,N001,T001,R001,Strength Basics,2025-01-12,60
+training,N002,T002,R002,Cardio Starter,2025-01-15,45
+training,dad05da9-fc08-475c-b280-f592a02ce791,T001,7026ec07-1d61-429e-b36f-871bf15d4caf,pushups,2026-07-07,70

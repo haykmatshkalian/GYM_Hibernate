@@ -1,0 +1,63 @@
+package com.login.gymcrm.dao;
+
+import com.login.gymcrm.model.Training;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public class InMemoryTrainingDao implements TrainingDao {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    public void save(Training entity) {
+        entityManager.persist(entity);
+    }
+
+    @Override
+    public void update(Training entity) {
+        entityManager.merge(entity);
+    }
+
+    @Override
+    public void deleteById(String id) {
+        findById(id).ifPresent(entityManager::remove);
+    }
+
+    @Override
+    public Optional<Training> findById(String id) {
+        List<Training> result = entityManager.createQuery(
+                        """
+                        select tr from Training tr
+                        join fetch tr.trainee t
+                        join fetch t.user
+                        join fetch tr.trainer r
+                        join fetch r.user
+                        join fetch tr.trainingType
+                        where tr.id = :id
+                        """, Training.class)
+                .setParameter("id", id)
+                .getResultList();
+
+        return result.stream().findFirst();
+    }
+
+    @Override
+    public List<Training> findAll() {
+        return entityManager.createQuery(
+                        """
+                        select tr from Training tr
+                        join fetch tr.trainee t
+                        join fetch t.user
+                        join fetch tr.trainer r
+                        join fetch r.user
+                        join fetch tr.trainingType
+                        """, Training.class)
+                .getResultList();
+    }
+}
