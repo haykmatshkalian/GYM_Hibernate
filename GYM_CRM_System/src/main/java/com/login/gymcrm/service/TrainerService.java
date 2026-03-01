@@ -68,7 +68,10 @@ public class TrainerService {
         validator.validateTrainerForUpdate(updated);
 
         Trainer existing = trainerDao.findById(updated.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Trainer not found: " + updated.getId()));
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found for update id={}", updated.getId());
+                    return new EntityNotFoundException("Trainer not found: " + updated.getId());
+                });
 
         existing.setFirstName(updated.getFirstName().trim());
         existing.setLastName(updated.getLastName().trim());
@@ -86,7 +89,10 @@ public class TrainerService {
         validator.requireId(id, "Trainer id is required for state change");
 
         Trainer existing = trainerDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Trainer not found: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found for state change id={}", id);
+                    return new EntityNotFoundException("Trainer not found: " + id);
+                });
 
         existing.setActive(!existing.isActive());
         trainerDao.update(existing);
@@ -99,13 +105,20 @@ public class TrainerService {
     @Transactional(readOnly = true)
     public Trainer selectProfile(String id) {
         validator.requireId(id, "Trainer id is required for select");
-        return trainerDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Trainer not found: " + id));
+        Trainer trainer = trainerDao.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found for select id={}", id);
+                    return new EntityNotFoundException("Trainer not found: " + id);
+                });
+        log.debug("Selected trainer profile id={}", id);
+        return trainer;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public List<Trainer> listAll() {
-        return trainerDao.findAll();
+        List<Trainer> trainers = trainerDao.findAll();
+        log.debug("Listed trainer profiles count={}", trainers.size());
+        return trainers;
     }
 }

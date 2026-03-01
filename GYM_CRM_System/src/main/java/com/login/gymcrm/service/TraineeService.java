@@ -73,7 +73,10 @@ public class TraineeService {
         validator.validateTraineeForUpdate(updated);
 
         Trainee existing = traineeDao.findById(updated.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + updated.getId()));
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for update id={}", updated.getId());
+                    return new EntityNotFoundException("Trainee not found: " + updated.getId());
+                });
 
         existing.setFirstName(updated.getFirstName().trim());
         existing.setLastName(updated.getLastName().trim());
@@ -90,7 +93,10 @@ public class TraineeService {
         validator.requireId(id, "Trainee id is required for state change");
 
         Trainee existing = traineeDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for state change id={}", id);
+                    return new EntityNotFoundException("Trainee not found: " + id);
+                });
 
         existing.setActive(!existing.isActive());
         traineeDao.update(existing);
@@ -106,12 +112,18 @@ public class TraineeService {
         validator.validateTrainerIds(trainerIds);
 
         Trainee trainee = traineeDao.findById(traineeId)
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + traineeId));
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for trainers list update id={}", traineeId);
+                    return new EntityNotFoundException("Trainee not found: " + traineeId);
+                });
 
         Set<Trainer> newTrainers = new LinkedHashSet<>();
         for (String trainerId : trainerIds) {
             Trainer trainer = trainerDao.findById(trainerId)
-                    .orElseThrow(() -> new EntityNotFoundException("Trainer not found: " + trainerId));
+                    .orElseThrow(() -> {
+                        log.warn("Trainer not found while updating trainee trainers list traineeId={} trainerId={}", traineeId, trainerId);
+                        return new EntityNotFoundException("Trainer not found: " + trainerId);
+                    });
             newTrainers.add(trainer);
         }
 
@@ -130,7 +142,10 @@ public class TraineeService {
         validator.requireId(id, "Trainee id is required for delete");
 
         Trainee existing = traineeDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + id));
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for delete id={}", id);
+                    return new EntityNotFoundException("Trainee not found: " + id);
+                });
 
         traineeDao.deleteById(existing.getId());
         log.info("Deleted trainee profile id={}", id);
@@ -140,13 +155,20 @@ public class TraineeService {
     @Transactional(readOnly = true)
     public Trainee selectProfile(String id) {
         validator.requireId(id, "Trainee id is required for select");
-        return traineeDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + id));
+        Trainee trainee = traineeDao.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for select id={}", id);
+                    return new EntityNotFoundException("Trainee not found: " + id);
+                });
+        log.debug("Selected trainee profile id={}", id);
+        return trainee;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public List<Trainee> listAll() {
-        return traineeDao.findAll();
+        List<Trainee> trainees = traineeDao.findAll();
+        log.debug("Listed trainee profiles count={}", trainees.size());
+        return trainees;
     }
 }

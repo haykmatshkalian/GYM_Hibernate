@@ -56,9 +56,15 @@ public class TrainingService {
         validator.requirePositive(durationMinutes, "Duration must be positive");
 
         Trainee trainee = traineeDao.findById(traineeId)
-                .orElseThrow(() -> new EntityNotFoundException("Trainee not found: " + traineeId));
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for training create traineeId={} trainerId={}", traineeId, trainerId);
+                    return new EntityNotFoundException("Trainee not found: " + traineeId);
+                });
         Trainer trainer = trainerDao.findById(trainerId)
-                .orElseThrow(() -> new EntityNotFoundException("Trainer not found: " + trainerId));
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found for training create traineeId={} trainerId={}", traineeId, trainerId);
+                    return new EntityNotFoundException("Trainer not found: " + trainerId);
+                });
 
         TrainingType trainingType = resolveTrainingType(trainer.getSpecialization());
 
@@ -85,14 +91,21 @@ public class TrainingService {
     @Transactional(readOnly = true)
     public Training selectTraining(String id) {
         validator.requireId(id, "Training id is required for select");
-        return trainingDao.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Training not found: " + id));
+        Training training = trainingDao.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("Training not found for select id={}", id);
+                    return new EntityNotFoundException("Training not found: " + id);
+                });
+        log.debug("Selected training id={}", id);
+        return training;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public List<Training> listAll() {
-        return trainingDao.findAll();
+        List<Training> trainings = trainingDao.findAll();
+        log.debug("Listed trainings count={}", trainings.size());
+        return trainings;
     }
 
     private TrainingType resolveTrainingType(String specialization) {
@@ -104,6 +117,7 @@ public class TrainingService {
                 .orElseGet(() -> {
                     TrainingType type = new TrainingType(idGenerator.generate(), typeName);
                     trainingTypeDao.save(type);
+                    log.debug("Created new training type name={}", typeName);
                     return type;
                 });
     }
