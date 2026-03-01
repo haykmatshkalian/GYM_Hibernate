@@ -4,12 +4,14 @@ import com.login.gymcrm.config.AppConfig;
 import com.login.gymcrm.model.Trainee;
 import com.login.gymcrm.model.Trainer;
 import com.login.gymcrm.model.Training;
+import com.login.gymcrm.service.exception.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TrainingServiceTest {
 
@@ -36,7 +38,12 @@ class TrainingServiceTest {
             assertThat(selected.getDurationMinutes()).isEqualTo(45);
 
             traineeService.deleteProfile(trainee.getId());
-            assertThat(trainingService.listAll()).isEmpty();
+
+            assertThat(trainingService.listAll())
+                    .extracting(Training::getId)
+                    .doesNotContain(created.getId());
+            assertThatThrownBy(() -> trainingService.selectTraining(created.getId()))
+                    .isInstanceOf(EntityNotFoundException.class);
         }
     }
 }

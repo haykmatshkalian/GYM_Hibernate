@@ -6,6 +6,8 @@ import com.login.gymcrm.service.TrainerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class UsernameGeneratorTest {
@@ -17,11 +19,16 @@ class UsernameGeneratorTest {
             TraineeService traineeService = context.getBean(TraineeService.class);
             TrainerService trainerService = context.getBean(TrainerService.class);
 
-            traineeService.createProfile("John", "Smith");
-            trainerService.createProfile("John", "Smith", "Cardio");
+            String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            String firstName = "John" + suffix;
+            String lastName = "Smith" + suffix;
+            String expectedBase = firstName + "." + lastName;
 
-            String username = generator.generate("John", "Smith");
-            assertThat(username).isEqualTo("John.Smith2");
+            traineeService.createProfile(firstName, lastName);
+            trainerService.createProfile(firstName, lastName, "Cardio");
+
+            String username = generator.generate(firstName, lastName);
+            assertThat(username).isEqualTo(expectedBase + "2");
         }
     }
 }
