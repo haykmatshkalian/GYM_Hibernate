@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class TraineeService {
@@ -80,6 +81,8 @@ public class TraineeService {
 
         existing.setFirstName(updated.getFirstName().trim());
         existing.setLastName(updated.getLastName().trim());
+        existing.setDateOfBirth(updated.getDateOfBirth());
+        existing.setAddress(updated.getAddress() == null ? null : updated.getAddress().trim());
         existing.setActive(updated.isActive());
 
         traineeDao.update(existing);
@@ -134,6 +137,29 @@ public class TraineeService {
         traineeDao.update(trainee);
         log.info("Updated trainee trainers list traineeId={} trainersCount={}", traineeId, newTrainers.size());
         return trainee;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
+    public List<Trainer> listUnassignedTrainersByTraineeUsername(String traineeUsername) {
+        validator.requireValue(traineeUsername, "Trainee username is required");
+
+        Trainee trainee = traineeDao.findByUsername(traineeUsername.trim())
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found by username for unassigned trainers lookup username={}", traineeUsername);
+                    return new EntityNotFoundException("Trainee not found by username: " + traineeUsername);
+                });
+
+        Set<String> assignedTrainerIds = trainee.getTrainers().stream()
+                .map(Trainer::getId)
+                .collect(Collectors.toSet());
+
+        List<Trainer> unassigned = trainerDao.findAll().stream()
+                .filter(trainer -> !assignedTrainerIds.contains(trainer.getId()))
+                .toList();
+
+        log.debug("Listed unassigned trainers for trainee username={} count={}", traineeUsername, unassigned.size());
+        return unassigned;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})

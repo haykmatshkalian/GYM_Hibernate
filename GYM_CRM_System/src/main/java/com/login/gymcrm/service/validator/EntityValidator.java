@@ -42,6 +42,12 @@ public class EntityValidator {
         }
     }
 
+    public void validateDateRange(LocalDate fromDate, LocalDate toDate, String message) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new ValidationException(message);
+        }
+    }
+
     public void validateTraineeForUpdate(Trainee trainee) {
         if (trainee == null || StringUtils.isBlank(trainee.getId())) {
             throw new ValidationException("Trainee id is required for update");

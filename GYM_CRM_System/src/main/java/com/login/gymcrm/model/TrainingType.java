@@ -10,6 +10,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "training_types", uniqueConstraints = {
@@ -18,10 +19,10 @@ import java.util.Set;
 public class TrainingType {
 
     @Id
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
-    @Column(name = "name", nullable = false, length = 120)
+    @Column(name = "name", nullable = false, length = 150)
     private String name;
 
     @OneToMany(mappedBy = "trainingType")
@@ -31,16 +32,16 @@ public class TrainingType {
     }
 
     public TrainingType(String id, String name) {
-        this.id = id;
+        this.id = UUID.fromString(id);
         this.name = name;
     }
 
     public String getId() {
-        return id;
+        return id == null ? null : id.toString();
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = id == null ? null : UUID.fromString(id);
     }
 
     public String getName() {

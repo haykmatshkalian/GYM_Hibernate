@@ -12,17 +12,25 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "trainees")
 public class Trainee {
 
     @Id
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Column(name = "address", length = 255)
+    private String address;
 
     @OneToOne(fetch = FetchType.EAGER, optional = false, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
@@ -32,7 +40,7 @@ public class Trainee {
     private Set<Training> trainings = new LinkedHashSet<>();
 
     @ManyToMany
-    @JoinTable(name = "trainee_trainers",
+    @JoinTable(name = "trainee_trainer",
             joinColumns = @JoinColumn(name = "trainee_id", nullable = false),
             inverseJoinColumns = @JoinColumn(name = "trainer_id", nullable = false))
     private Set<Trainer> trainers = new LinkedHashSet<>();
@@ -41,16 +49,32 @@ public class Trainee {
     }
 
     public Trainee(String id, String firstName, String lastName, String username, String password, boolean active) {
-        this.id = id;
-        this.user = new User(id + "-user", firstName, lastName, username, password, active);
+        this.id = UUID.fromString(id);
+        this.user = new User(UUID.randomUUID().toString(), firstName, lastName, username, password, active);
     }
 
     public String getId() {
-        return id;
+        return id == null ? null : id.toString();
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = id == null ? null : UUID.fromString(id);
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public User getUser() {
@@ -167,11 +191,13 @@ public class Trainee {
     @Override
     public String toString() {
         return "Trainee{" +
-                "id='" + id + '\'' +
+                "id='" + getId() + '\'' +
                 ", firstName='" + getFirstName() + '\'' +
                 ", lastName='" + getLastName() + '\'' +
                 ", username='" + getUsername() + '\'' +
                 ", active=" + isActive() +
+                ", dateOfBirth=" + dateOfBirth +
+                ", address='" + address + '\'' +
                 '}';
     }
 }

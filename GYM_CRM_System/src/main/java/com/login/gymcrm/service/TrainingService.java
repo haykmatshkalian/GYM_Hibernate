@@ -13,6 +13,7 @@ import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import com.login.gymcrm.util.UuidGenerator;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -89,6 +90,63 @@ public class TrainingService {
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
+    public List<Training> getTraineeTrainingsByCriteria(String traineeUsername,
+                                                        LocalDate fromDate,
+                                                        LocalDate toDate,
+                                                        String trainerName,
+                                                        String trainingTypeName) {
+        validator.requireValue(traineeUsername, "Trainee username is required");
+        validator.validateDateRange(fromDate, toDate, "Invalid date range: from date is after to date");
+
+        Trainee trainee = traineeDao.findByUsername(traineeUsername.trim())
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found by username for trainings lookup username={}", traineeUsername);
+                    return new EntityNotFoundException("Trainee not found by username: " + traineeUsername);
+                });
+
+        String normalizedTrainerName = normalize(trainerName);
+        String normalizedTrainingType = normalize(trainingTypeName);
+
+        List<Training> trainings = trainingDao.findByTraineeUsername(trainee.getUsername()).stream()
+                .filter(training -> fromDate == null || !training.getDate().isBefore(fromDate))
+                .filter(training -> toDate == null || !training.getDate().isAfter(toDate))
+                .filter(training -> matchesTrainerName(training, normalizedTrainerName))
+                .filter(training -> matchesTrainingType(training, normalizedTrainingType))
+                .toList();
+
+        log.debug("Listed trainee trainings by criteria username={} count={}", traineeUsername, trainings.size());
+        return trainings;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
+    public List<Training> getTrainerTrainingsByCriteria(String trainerUsername,
+                                                        LocalDate fromDate,
+                                                        LocalDate toDate,
+                                                        String traineeName) {
+        validator.requireValue(trainerUsername, "Trainer username is required");
+        validator.validateDateRange(fromDate, toDate, "Invalid date range: from date is after to date");
+
+        Trainer trainer = trainerDao.findByUsername(trainerUsername.trim())
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found by username for trainings lookup username={}", trainerUsername);
+                    return new EntityNotFoundException("Trainer not found by username: " + trainerUsername);
+                });
+
+        String normalizedTraineeName = normalize(traineeName);
+
+        List<Training> trainings = trainingDao.findByTrainerUsername(trainer.getUsername()).stream()
+                .filter(training -> fromDate == null || !training.getDate().isBefore(fromDate))
+                .filter(training -> toDate == null || !training.getDate().isAfter(toDate))
+                .filter(training -> matchesTraineeName(training, normalizedTraineeName))
+                .toList();
+
+        log.debug("Listed trainer trainings by criteria username={} count={}", trainerUsername, trainings.size());
+        return trainings;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
     public Training selectTraining(String id) {
         validator.requireId(id, "Training id is required for select");
         Training training = trainingDao.findById(id)
@@ -120,5 +178,34 @@ public class TrainingService {
                     log.debug("Created new training type name={}", typeName);
                     return type;
                 });
+    }
+
+    private boolean matchesTrainerName(Training training, String normalizedTrainerName) {
+        if (normalizedTrainerName == null) {
+            return true;
+        }
+        String fullName = (training.getTrainer().getFirstName() + " " + training.getTrainer().getLastName()).toLowerCase();
+        return fullName.contains(normalizedTrainerName)
+                || training.getTrainer().getUsername().toLowerCase().contains(normalizedTrainerName);
+    }
+
+    private boolean matchesTraineeName(Training training, String normalizedTraineeName) {
+        if (normalizedTraineeName == null) {
+            return true;
+        }
+        String fullName = (training.getTrainee().getFirstName() + " " + training.getTrainee().getLastName()).toLowerCase();
+        return fullName.contains(normalizedTraineeName)
+                || training.getTrainee().getUsername().toLowerCase().contains(normalizedTraineeName);
+    }
+
+    private boolean matchesTrainingType(Training training, String normalizedTrainingType) {
+        if (normalizedTrainingType == null) {
+            return true;
+        }
+        return training.getTrainingType().getName().toLowerCase().contains(normalizedTrainingType);
+    }
+
+    private String normalize(String value) {
+        return StringUtils.isBlank(value) ? null : value.trim().toLowerCase();
     }
 }

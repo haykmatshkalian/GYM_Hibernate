@@ -35,6 +35,11 @@ public class ConsoleSmokeCheck {
                 facade.clearCurrentRole();
                 return;
             }
+            if (isSeedMode(args)) {
+                seedDemoData(facade, currentRole);
+                facade.clearCurrentRole();
+                return;
+            }
 
             boolean running = true;
             while (running) {
@@ -47,9 +52,11 @@ public class ConsoleSmokeCheck {
                     case "3" -> trainerMenu(scanner, facade);
                     case "4" -> trainingMenu(scanner, facade);
                     case "5" -> updateTraineeTrainersMenu(scanner, facade);
-                    case "6" -> runPresentationScenario(facade, currentRole);
-                    case "7" -> printAllCounts(facade);
-                    case "8" -> printTrainingAndTrainingTypeReason();
+                    case "6" -> listUnassignedTrainersByUsernameMenu(scanner, facade);
+                    case "7" -> runPresentationScenario(facade, currentRole);
+                    case "8" -> printAllCounts(facade);
+                    case "9" -> printTrainingAndTrainingTypeReason();
+                    case "10" -> seedDemoData(facade, currentRole);
                     case "0" -> running = false;
                     default -> System.out.println("Unknown option");
                 }
@@ -68,15 +75,21 @@ public class ConsoleSmokeCheck {
         System.out.println("3. Trainer actions");
         System.out.println("4. Training actions");
         System.out.println("5. Update trainee trainers list");
-        System.out.println("6. Run end-to-end presentation scenario");
-        System.out.println("7. Print entity counts");
-        System.out.println("8. Print reason for Training + TrainingType separation");
+        System.out.println("6. List trainers not assigned to trainee (by trainee username)");
+        System.out.println("7. Run end-to-end presentation scenario");
+        System.out.println("8. Print entity counts");
+        System.out.println("9. Print reason for Training + TrainingType separation");
+        System.out.println("10. Seed demo data for manual testing");
         System.out.println("0. Exit");
         System.out.print("Choose: ");
     }
 
     private static boolean isDemoMode(String[] args) {
         return args != null && args.length > 0 && "demo".equalsIgnoreCase(args[0]);
+    }
+
+    private static boolean isSeedMode(String[] args) {
+        return args != null && args.length > 0 && "seed".equalsIgnoreCase(args[0]);
     }
 
     private static Role chooseRole(Scanner scanner, GymCrmFacade facade, Role currentRole) {
@@ -111,6 +124,7 @@ public class ConsoleSmokeCheck {
         System.out.println("4. Delete");
         System.out.println("5. Select by id");
         System.out.println("6. List all");
+        System.out.println("7. List trainers not assigned (by trainee username)");
         System.out.print("Choose: ");
         String choice = scanner.nextLine().trim();
 
@@ -163,6 +177,7 @@ public class ConsoleSmokeCheck {
                     printTrainee(trainee, "Found trainee");
                 }
                 case "6" -> facade.listTrainees().forEach(t -> printTrainee(t, "Trainee"));
+                case "7" -> listUnassignedTrainersByUsernameMenu(scanner, facade);
                 default -> System.out.println("Unknown option");
             }
         } catch (AuthorizationException ex) {
@@ -246,6 +261,8 @@ public class ConsoleSmokeCheck {
         System.out.println("1. Create");
         System.out.println("2. Select by id");
         System.out.println("3. List all");
+        System.out.println("4. List trainee trainings by username and criteria");
+        System.out.println("5. List trainer trainings by username and criteria");
         System.out.print("Choose: ");
         String choice = scanner.nextLine().trim();
 
@@ -276,12 +293,61 @@ public class ConsoleSmokeCheck {
                     printTraining(training, "Found training");
                 }
                 case "3" -> facade.listTrainings().forEach(t -> printTraining(t, "Training"));
+                case "4" -> listTraineeTrainingsByCriteriaMenu(scanner, facade);
+                case "5" -> listTrainerTrainingsByCriteriaMenu(scanner, facade);
                 default -> System.out.println("Unknown option");
             }
         } catch (DateTimeParseException ex) {
             System.out.println("Invalid date format. Use yyyy-MM-dd.");
         } catch (NumberFormatException ex) {
             System.out.println("Invalid number for duration.");
+        } catch (AuthorizationException ex) {
+            System.out.println("Access denied: " + ex.getMessage());
+        } catch (Exception ex) {
+            System.out.println("Operation failed: " + ex.getMessage());
+        }
+    }
+
+    private static void listTraineeTrainingsByCriteriaMenu(Scanner scanner, GymCrmFacade facade) {
+        System.out.print("Trainee username: ");
+        String traineeUsername = scanner.nextLine();
+        System.out.print("From date (yyyy-MM-dd, optional): ");
+        LocalDate fromDate = parseOptionalDate(scanner.nextLine());
+        System.out.print("To date (yyyy-MM-dd, optional): ");
+        LocalDate toDate = parseOptionalDate(scanner.nextLine());
+        System.out.print("Trainer name (optional): ");
+        String trainerName = scanner.nextLine();
+        System.out.print("Training type (optional): ");
+        String trainingType = scanner.nextLine();
+
+        List<Training> trainings = facade.listTraineeTrainingsByCriteria(traineeUsername, fromDate, toDate, trainerName, trainingType);
+        System.out.println("Matched trainee trainings count: " + trainings.size());
+        trainings.forEach(t -> printTraining(t, "Training"));
+    }
+
+    private static void listTrainerTrainingsByCriteriaMenu(Scanner scanner, GymCrmFacade facade) {
+        System.out.print("Trainer username: ");
+        String trainerUsername = scanner.nextLine();
+        System.out.print("From date (yyyy-MM-dd, optional): ");
+        LocalDate fromDate = parseOptionalDate(scanner.nextLine());
+        System.out.print("To date (yyyy-MM-dd, optional): ");
+        LocalDate toDate = parseOptionalDate(scanner.nextLine());
+        System.out.print("Trainee name (optional): ");
+        String traineeName = scanner.nextLine();
+
+        List<Training> trainings = facade.listTrainerTrainingsByCriteria(trainerUsername, fromDate, toDate, traineeName);
+        System.out.println("Matched trainer trainings count: " + trainings.size());
+        trainings.forEach(t -> printTraining(t, "Training"));
+    }
+
+    private static void listUnassignedTrainersByUsernameMenu(Scanner scanner, GymCrmFacade facade) {
+        try {
+            System.out.print("Trainee username: ");
+            String traineeUsername = scanner.nextLine().trim();
+
+            List<Trainer> trainers = facade.listUnassignedTrainersByTraineeUsername(traineeUsername);
+            System.out.println("Unassigned trainers count: " + trainers.size());
+            trainers.forEach(t -> printTrainer(t, "Unassigned trainer"));
         } catch (AuthorizationException ex) {
             System.out.println("Access denied: " + ex.getMessage());
         } catch (Exception ex) {
@@ -333,9 +399,11 @@ public class ConsoleSmokeCheck {
             Trainee trainee = facade.createTrainee("Demo" + suffix, "Trainee");
             Trainer t1 = facade.createTrainer("Demo" + suffix, "TrainerOne", "Cardio");
             Trainer t2 = facade.createTrainer("Demo" + suffix, "TrainerTwo", "Strength");
+            Trainer t3 = facade.createTrainer("Demo" + suffix, "TrainerThree", "Yoga");
             printTrainee(trainee, "Created");
             printTrainer(t1, "Created");
             printTrainer(t2, "Created");
+            printTrainer(t3, "Created");
 
             System.out.println("Step 3: Update trainee-trainer join table.");
             facade.updateTraineeTrainers(trainee.getId(), List.of(t1.getId()));
@@ -356,20 +424,50 @@ public class ConsoleSmokeCheck {
             Trainer trainerAfterToggle2 = facade.changeTrainerState(t1.getId());
             System.out.println("Trainer state toggled twice: " + trainerAfterToggle1.isActive() + " -> " + trainerAfterToggle2.isActive());
 
-            System.out.println("Step 5: Create training and show data types + TrainingType relation.");
-            Training training = facade.createTraining(trainee.getId(), t2.getId(), "Demo Session " + suffix, LocalDate.now(), 30);
-            printTraining(training, "Created training");
+            System.out.println("Step 5: Create trainings and show data types + TrainingType relation.");
+            Training trainingA = facade.createTraining(trainee.getId(), t1.getId(), "Cardio Session " + suffix,
+                    LocalDate.now().minusDays(2), 30);
+            Training trainingB = facade.createTraining(trainee.getId(), t2.getId(), "Strength Session " + suffix,
+                    LocalDate.now(), 45);
+            printTraining(trainingA, "Created training A");
+            printTraining(trainingB, "Created training B");
 
-            System.out.println("Step 6: Cascade delete (delete trainee removes related trainings).");
+            System.out.println("Step 6: Requirement #14 - trainee trainings by username + criteria.");
+            List<Training> traineeFiltered = facade.listTraineeTrainingsByCriteria(
+                    trainee.getUsername(),
+                    LocalDate.now().minusDays(1),
+                    LocalDate.now().plusDays(1),
+                    t2.getFirstName(),
+                    "Strength"
+            );
+            System.out.println("Filtered trainee trainings count: " + traineeFiltered.size());
+            traineeFiltered.forEach(t -> printTraining(t, "Filtered trainee training"));
+
+            System.out.println("Step 7: Requirement #15 - trainer trainings by username + criteria.");
+            List<Training> trainerFiltered = facade.listTrainerTrainingsByCriteria(
+                    t2.getUsername(),
+                    LocalDate.now().minusDays(1),
+                    LocalDate.now().plusDays(1),
+                    trainee.getFirstName()
+            );
+            System.out.println("Filtered trainer trainings count: " + trainerFiltered.size());
+            trainerFiltered.forEach(t -> printTraining(t, "Filtered trainer training"));
+
+            System.out.println("Step 8: Requirement #17 - unassigned trainers by trainee username.");
+            List<Trainer> unassigned = facade.listUnassignedTrainersByTraineeUsername(trainee.getUsername());
+            System.out.println("Unassigned trainers count: " + unassigned.size());
+            unassigned.forEach(t -> printTrainer(t, "Unassigned"));
+
+            System.out.println("Step 9: Cascade delete (delete trainee removes related trainings).");
             facade.deleteTrainee(trainee.getId());
             try {
-                facade.selectTraining(training.getId());
+                facade.selectTraining(trainingB.getId());
                 System.out.println("Cascade delete (trainee -> trainings): FAILED");
             } catch (EntityNotFoundException ex) {
                 System.out.println("Cascade delete (trainee -> trainings): OK");
             }
 
-            System.out.println("Step 7: Why Training and TrainingType are separate tables.");
+            System.out.println("Step 10: Why Training and TrainingType are separate tables.");
             printTrainingAndTrainingTypeReason();
 
             System.out.println("=== PRESENTATION SCENARIO END ===");
@@ -379,6 +477,77 @@ public class ConsoleSmokeCheck {
         } finally {
             facade.setCurrentRole(previous);
         }
+    }
+
+    private static void seedDemoData(GymCrmFacade facade, Role currentRole) {
+        Role previous = currentRole;
+        try {
+            facade.setCurrentRole(Role.ADMIN);
+            String suffix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HHmmss", Locale.ROOT));
+
+            Trainee traineeA = facade.createTrainee("Seed" + suffix, "Alpha");
+            Trainee traineeB = facade.createTrainee("Seed" + suffix, "Beta");
+
+            traineeA.setDateOfBirth(LocalDate.of(1995, 5, 10));
+            traineeA.setAddress("Yerevan, 10 Tumanyan St");
+            traineeA = facade.updateTrainee(traineeA);
+
+            traineeB.setDateOfBirth(LocalDate.of(1998, 8, 21));
+            traineeB.setAddress("Yerevan, 22 Mashtots Ave");
+            traineeB = facade.updateTrainee(traineeB);
+
+            Trainer trainerA = facade.createTrainer("Coach" + suffix, "Cardio", "Cardio");
+            Trainer trainerB = facade.createTrainer("Coach" + suffix, "Strength", "Strength");
+            Trainer trainerC = facade.createTrainer("Coach" + suffix, "Yoga", "Yoga");
+
+            facade.updateTraineeTrainers(traineeA.getId(), List.of(trainerA.getId(), trainerB.getId()));
+            facade.updateTraineeTrainers(traineeB.getId(), List.of(trainerB.getId()));
+
+            Training t1 = facade.createTraining(traineeA.getId(), trainerA.getId(),
+                    "Seed Cardio " + suffix, LocalDate.now().minusDays(3), 30);
+            Training t2 = facade.createTraining(traineeA.getId(), trainerB.getId(),
+                    "Seed Strength " + suffix, LocalDate.now().minusDays(1), 45);
+            Training t3 = facade.createTraining(traineeB.getId(), trainerB.getId(),
+                    "Seed Strength B " + suffix, LocalDate.now(), 40);
+
+            System.out.println("\n=== DEMO DATA SEEDED ===");
+            printTrainee(traineeA, "Trainee A");
+            printTrainee(traineeB, "Trainee B");
+            printTrainer(trainerA, "Trainer A");
+            printTrainer(trainerB, "Trainer B");
+            printTrainer(trainerC, "Trainer C (unassigned to Trainee A)");
+            printTraining(t1, "Training 1");
+            printTraining(t2, "Training 2");
+            printTraining(t3, "Training 3");
+
+            System.out.println("\nQuick manual checks:");
+            System.out.println("1) Requirement 14: Menu 4 -> 4");
+            System.out.println("   traineeUsername=" + traineeA.getUsername()
+                    + ", fromDate=" + LocalDate.now().minusDays(2)
+                    + ", toDate=" + LocalDate.now()
+                    + ", trainerName=" + trainerB.getFirstName()
+                    + ", trainingType=Strength");
+            System.out.println("2) Requirement 15: Menu 4 -> 5");
+            System.out.println("   trainerUsername=" + trainerB.getUsername()
+                    + ", fromDate=" + LocalDate.now().minusDays(2)
+                    + ", toDate=" + LocalDate.now()
+                    + ", traineeName=" + traineeA.getFirstName());
+            System.out.println("3) Requirement 17: Menu 6");
+            System.out.println("   traineeUsername=" + traineeA.getUsername());
+            System.out.println("=== END SEED ===\n");
+        } catch (Exception ex) {
+            System.out.println("Seed failed: " + ex.getMessage());
+        } finally {
+            facade.setCurrentRole(previous);
+        }
+    }
+
+    private static LocalDate parseOptionalDate(String input) {
+        String trimmed = input == null ? "" : input.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return LocalDate.parse(trimmed);
     }
 
     private static void printAllCounts(GymCrmFacade facade) {
@@ -392,6 +561,8 @@ public class ConsoleSmokeCheck {
         System.out.println(label + ": id=" + trainee.getId()
                 + ", name=" + trainee.getFirstName() + " " + trainee.getLastName()
                 + ", username=" + trainee.getUsername()
+                + ", dateOfBirth=" + trainee.getDateOfBirth()
+                + ", address=" + trainee.getAddress()
                 + ", active=" + trainee.isActive());
     }
 

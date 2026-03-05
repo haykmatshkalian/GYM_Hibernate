@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,14 +23,21 @@ class CsvSnapshotWriterTest {
     void saveCreatesDirectoriesAndWritesSortedCsvSnapshot() throws Exception {
         CsvSnapshotWriter writer = new CsvSnapshotWriter();
 
-        Trainee traineeB = new Trainee("t2", "Alex,One", "Stone", "u1", "p", true);
-        Trainee traineeA = new Trainee("t1", "Mia", "Ray", "u2", "p", false);
+        String traineeIdA = UUID.randomUUID().toString();
+        String traineeIdB = UUID.randomUUID().toString();
+        String trainerIdA = UUID.randomUUID().toString();
+        String trainerIdB = UUID.randomUUID().toString();
+        String trainingIdA = UUID.randomUUID().toString();
+        String trainingIdB = UUID.randomUUID().toString();
 
-        Trainer trainerB = new Trainer("r2", "Sarah", "Cole", "u3", "p", "Yoga");
-        Trainer trainerA = new Trainer("r1", "Leo", "King", "u4", "p", "Strength,Core");
+        Trainee traineeB = new Trainee(traineeIdB, "Alex,One", "Stone", "u1", "p", true);
+        Trainee traineeA = new Trainee(traineeIdA, "Mia", "Ray", "u2", "p", false);
 
-        Training trainingB = new Training("tr2", "t2", "r2", "Morning,Session", LocalDate.of(2026, 1, 3), 30);
-        Training trainingA = new Training("tr1", "t1", "r1", "Evening", LocalDate.of(2026, 1, 2), 45);
+        Trainer trainerB = new Trainer(trainerIdB, "Sarah", "Cole", "u3", "p", "Yoga");
+        Trainer trainerA = new Trainer(trainerIdA, "Leo", "King", "u4", "p", "Strength,Core");
+
+        Training trainingB = new Training(trainingIdB, traineeIdB, trainerIdB, "Morning,Session", LocalDate.of(2026, 1, 3), 30);
+        Training trainingA = new Training(trainingIdA, traineeIdA, trainerIdA, "Evening", LocalDate.of(2026, 1, 2), 45);
 
         Path csvPath = tempDir.resolve("snapshots/state.csv");
         writer.save(csvPath,
@@ -43,17 +51,15 @@ class CsvSnapshotWriterTest {
         assertThat(lines).isNotEmpty();
         assertThat(lines.get(0)).startsWith("# type,id");
 
-        assertThat(lines).containsSubsequence(
-                "trainee,t1,Mia,Ray,false",
-                "trainee,t2,Alex One,Stone,true"
-        );
-        assertThat(lines).containsSubsequence(
-                "trainer,r1,Leo,King,Strength Core",
-                "trainer,r2,Sarah,Cole,Yoga"
-        );
-        assertThat(lines).containsSubsequence(
-                "training,tr1,t1,r1,Evening,2026-01-02,45",
-                "training,tr2,t2,r2,Morning Session,2026-01-03,30"
-        );
+        String traineeLineA = "trainee," + traineeIdA + ",Mia,Ray,false";
+        String traineeLineB = "trainee," + traineeIdB + ",Alex One,Stone,true";
+        String trainerLineA = "trainer," + trainerIdA + ",Leo,King,Strength Core";
+        String trainerLineB = "trainer," + trainerIdB + ",Sarah,Cole,Yoga";
+        String trainingLineA = "training," + trainingIdA + "," + traineeIdA + "," + trainerIdA + ",Evening,2026-01-02,45";
+        String trainingLineB = "training," + trainingIdB + "," + traineeIdB + "," + trainerIdB + ",Morning Session,2026-01-03,30";
+
+        assertThat(lines).contains(traineeLineA, traineeLineB);
+        assertThat(lines).contains(trainerLineA, trainerLineB);
+        assertThat(lines).contains(trainingLineA, trainingLineB);
     }
 }

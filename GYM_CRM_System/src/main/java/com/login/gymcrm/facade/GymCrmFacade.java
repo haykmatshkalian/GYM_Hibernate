@@ -54,6 +54,10 @@ public class GymCrmFacade {
         return traineeService.updateTrainersList(traineeId, trainerIds);
     }
 
+    public List<Trainer> listUnassignedTrainersByTraineeUsername(String traineeUsername) {
+        return traineeService.listUnassignedTrainersByTraineeUsername(traineeUsername);
+    }
+
     public void deleteTrainee(String id) {
         traineeService.deleteProfile(id);
     }
@@ -88,6 +92,21 @@ public class GymCrmFacade {
 
     public Training createTraining(String traineeId, String trainerId, String name, LocalDate date, int durationMinutes) {
         return trainingService.createTraining(traineeId, trainerId, name, date, durationMinutes);
+    }
+
+    public List<Training> listTraineeTrainingsByCriteria(String traineeUsername,
+                                                         LocalDate fromDate,
+                                                         LocalDate toDate,
+                                                         String trainerName,
+                                                         String trainingTypeName) {
+        return trainingService.getTraineeTrainingsByCriteria(traineeUsername, fromDate, toDate, trainerName, trainingTypeName);
+    }
+
+    public List<Training> listTrainerTrainingsByCriteria(String trainerUsername,
+                                                         LocalDate fromDate,
+                                                         LocalDate toDate,
+                                                         String traineeName) {
+        return trainingService.getTrainerTrainingsByCriteria(trainerUsername, fromDate, toDate, traineeName);
     }
 
     public Training selectTraining(String id) {

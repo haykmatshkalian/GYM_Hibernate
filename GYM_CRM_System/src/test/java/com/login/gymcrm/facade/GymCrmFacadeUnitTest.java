@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,16 +28,23 @@ class GymCrmFacadeUnitTest {
 
         GymCrmFacade facade = new GymCrmFacade(traineeService, trainerService, trainingService, securityRoleContext);
 
-        Trainee trainee = new Trainee("t1", "A", "B", "a.b", "p", true);
-        Trainer trainer = new Trainer("r1", "C", "D", "c.d", "p", "Cardio");
-        Training training = new Training("tr1", "t1", "r1", "Session", LocalDate.of(2026, 1, 1), 30);
+        String traineeId = UUID.randomUUID().toString();
+        String trainerId = UUID.randomUUID().toString();
+        String trainingId = UUID.randomUUID().toString();
+
+        Trainee trainee = new Trainee(traineeId, "A", "B", "a.b", "p", true);
+        Trainer trainer = new Trainer(trainerId, "C", "D", "c.d", "p", "Cardio");
+        Training training = new Training(trainingId, traineeId, trainerId, "Session", LocalDate.of(2026, 1, 1), 30);
 
         traineeService.returnTrainee = trainee;
         traineeService.returnTrainees = List.of(trainee);
+        traineeService.returnUnassignedTrainers = List.of(trainer);
         trainerService.returnTrainer = trainer;
         trainerService.returnTrainers = List.of(trainer);
         trainingService.returnTraining = training;
         trainingService.returnTrainings = List.of(training);
+        trainingService.returnTraineeCriteriaTrainings = List.of(training);
+        trainingService.returnTrainerCriteriaTrainings = List.of(training);
 
         facade.setCurrentRole(Role.TRAINEE_MANAGER);
         assertThat(securityRoleContext.getCurrentRole()).isEqualTo(Role.TRAINEE_MANAGER);
@@ -45,28 +53,32 @@ class GymCrmFacadeUnitTest {
 
         assertThat(facade.createTrainee("A", "B")).isSameAs(trainee);
         assertThat(facade.updateTrainee(trainee)).isSameAs(trainee);
-        assertThat(facade.changeTraineeState("t1")).isSameAs(trainee);
-        assertThat(facade.updateTraineeTrainers("t1", List.of("r1"))).isSameAs(trainee);
-        facade.deleteTrainee("t1");
-        assertThat(facade.selectTrainee("t1")).isSameAs(trainee);
+        assertThat(facade.changeTraineeState(traineeId)).isSameAs(trainee);
+        assertThat(facade.updateTraineeTrainers(traineeId, List.of(trainerId))).isSameAs(trainee);
+        assertThat(facade.listUnassignedTrainersByTraineeUsername(trainee.getUsername())).containsExactly(trainer);
+        facade.deleteTrainee(traineeId);
+        assertThat(facade.selectTrainee(traineeId)).isSameAs(trainee);
         assertThat(facade.listTrainees()).containsExactly(trainee);
 
-        assertThat(traineeService.deletedIds).containsExactly("t1");
+        assertThat(traineeService.deletedIds).containsExactly(traineeId);
 
         assertThat(facade.createTrainer("C", "D", "Cardio")).isSameAs(trainer);
         assertThat(facade.updateTrainer(trainer)).isSameAs(trainer);
-        assertThat(facade.changeTrainerState("r1")).isSameAs(trainer);
-        assertThat(facade.selectTrainer("r1")).isSameAs(trainer);
+        assertThat(facade.changeTrainerState(trainerId)).isSameAs(trainer);
+        assertThat(facade.selectTrainer(trainerId)).isSameAs(trainer);
         assertThat(facade.listTrainers()).containsExactly(trainer);
 
-        assertThat(facade.createTraining("t1", "r1", "Session", LocalDate.of(2026, 1, 1), 30)).isSameAs(training);
-        assertThat(facade.selectTraining("tr1")).isSameAs(training);
+        assertThat(facade.createTraining(traineeId, trainerId, "Session", LocalDate.of(2026, 1, 1), 30)).isSameAs(training);
+        assertThat(facade.selectTraining(trainingId)).isSameAs(training);
         assertThat(facade.listTrainings()).containsExactly(training);
+        assertThat(facade.listTraineeTrainingsByCriteria(trainee.getUsername(), null, null, null, null)).containsExactly(training);
+        assertThat(facade.listTrainerTrainingsByCriteria(trainer.getUsername(), null, null, null)).containsExactly(training);
     }
 
     private static final class FakeTraineeService extends TraineeService {
         private Trainee returnTrainee;
         private List<Trainee> returnTrainees = List.of();
+        private List<Trainer> returnUnassignedTrainers = List.of();
         private final List<String> deletedIds = new ArrayList<>();
 
         private FakeTraineeService() {
@@ -91,6 +103,11 @@ class GymCrmFacadeUnitTest {
         @Override
         public Trainee updateTrainersList(String traineeId, List<String> trainerIds) {
             return returnTrainee;
+        }
+
+        @Override
+        public List<Trainer> listUnassignedTrainersByTraineeUsername(String traineeUsername) {
+            return returnUnassignedTrainers;
         }
 
         @Override
@@ -146,6 +163,8 @@ class GymCrmFacadeUnitTest {
     private static final class FakeTrainingService extends TrainingService {
         private Training returnTraining;
         private List<Training> returnTrainings = List.of();
+        private List<Training> returnTraineeCriteriaTrainings = List.of();
+        private List<Training> returnTrainerCriteriaTrainings = List.of();
 
         private FakeTrainingService() {
             super(null, null, null, null, null, null);
@@ -154,6 +173,23 @@ class GymCrmFacadeUnitTest {
         @Override
         public Training createTraining(String traineeId, String trainerId, String name, LocalDate date, int durationMinutes) {
             return returnTraining;
+        }
+
+        @Override
+        public List<Training> getTraineeTrainingsByCriteria(String traineeUsername,
+                                                            LocalDate fromDate,
+                                                            LocalDate toDate,
+                                                            String trainerName,
+                                                            String trainingTypeName) {
+            return returnTraineeCriteriaTrainings;
+        }
+
+        @Override
+        public List<Training> getTrainerTrainingsByCriteria(String trainerUsername,
+                                                            LocalDate fromDate,
+                                                            LocalDate toDate,
+                                                            String traineeName) {
+            return returnTrainerCriteriaTrainings;
         }
 
         @Override

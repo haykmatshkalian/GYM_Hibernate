@@ -14,20 +14,21 @@ import jakarta.persistence.Table;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "trainers")
 public class Trainer {
 
     @Id
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
     @OneToOne(fetch = FetchType.EAGER, optional = false, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(name = "specialization", nullable = false, length = 120)
+    @Column(name = "specialization", length = 150)
     private String specialization;
 
     @OneToMany(mappedBy = "trainer")
@@ -40,17 +41,17 @@ public class Trainer {
     }
 
     public Trainer(String id, String firstName, String lastName, String username, String password, String specialization) {
-        this.id = id;
-        this.user = new User(id + "-user", firstName, lastName, username, password, true);
+        this.id = UUID.fromString(id);
+        this.user = new User(UUID.randomUUID().toString(), firstName, lastName, username, password, true);
         this.specialization = specialization;
     }
 
     public String getId() {
-        return id;
+        return id == null ? null : id.toString();
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = id == null ? null : UUID.fromString(id);
     }
 
     public User getUser() {
@@ -155,7 +156,7 @@ public class Trainer {
     @Override
     public String toString() {
         return "Trainer{" +
-                "id='" + id + '\'' +
+                "id='" + getId() + '\'' +
                 ", firstName='" + getFirstName() + '\'' +
                 ", lastName='" + getLastName() + '\'' +
                 ", username='" + getUsername() + '\'' +

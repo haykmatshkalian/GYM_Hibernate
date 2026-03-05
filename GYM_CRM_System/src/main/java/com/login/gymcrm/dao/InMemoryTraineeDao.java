@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class InMemoryTraineeDao implements TraineeDao {
@@ -34,12 +35,27 @@ public class InMemoryTraineeDao implements TraineeDao {
         List<Trainee> result = entityManager.createQuery(
                         """
                         select distinct t from Trainee t
-                        join fetch t.user
+                        join fetch t.user u
                         left join fetch t.trainers tr
                         left join fetch tr.user
                         where t.id = :id
                         """, Trainee.class)
-                .setParameter("id", id)
+                .setParameter("id", UUID.fromString(id))
+                .getResultList();
+        return result.stream().findFirst();
+    }
+
+    @Override
+    public Optional<Trainee> findByUsername(String username) {
+        List<Trainee> result = entityManager.createQuery(
+                        """
+                        select distinct t from Trainee t
+                        join fetch t.user u
+                        left join fetch t.trainers tr
+                        left join fetch tr.user
+                        where lower(u.username) = lower(:username)
+                        """, Trainee.class)
+                .setParameter("username", username)
                 .getResultList();
         return result.stream().findFirst();
     }

@@ -10,14 +10,15 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "trainings")
 public class Training {
 
     @Id
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "trainee_id", nullable = false)
@@ -31,7 +32,7 @@ public class Training {
     @JoinColumn(name = "training_type_id", nullable = false)
     private TrainingType trainingType;
 
-    @Column(name = "name", nullable = false, length = 150)
+    @Column(name = "training_name", nullable = false, length = 200)
     private String name;
 
     @Column(name = "training_date", nullable = false)
@@ -45,7 +46,7 @@ public class Training {
 
     public Training(String id, Trainee trainee, Trainer trainer, TrainingType trainingType,
                     String name, LocalDate date, int durationMinutes) {
-        this.id = id;
+        this.id = UUID.fromString(id);
         this.trainee = trainee;
         this.trainer = trainer;
         this.trainingType = trainingType;
@@ -55,7 +56,7 @@ public class Training {
     }
 
     public Training(String id, String traineeId, String trainerId, String name, LocalDate date, int durationMinutes) {
-        this.id = id;
+        this.id = UUID.fromString(id);
         this.trainee = new Trainee();
         this.trainee.setId(traineeId);
         this.trainer = new Trainer();
@@ -66,11 +67,11 @@ public class Training {
     }
 
     public String getId() {
-        return id;
+        return id == null ? null : id.toString();
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = id == null ? null : UUID.fromString(id);
     }
 
     public Trainee getTrainee() {
@@ -149,7 +150,7 @@ public class Training {
     @Override
     public String toString() {
         return "Training{" +
-                "id='" + id + '\'' +
+                "id='" + getId() + '\'' +
                 ", traineeId='" + getTraineeId() + '\'' +
                 ", trainerId='" + getTrainerId() + '\'' +
                 ", name='" + name + '\'' +

@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
@@ -15,8 +16,8 @@ import java.util.Objects;
 public class User {
 
     @Id
-    @Column(name = "id", nullable = false, length = 36)
-    private String id;
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
@@ -30,14 +31,14 @@ public class User {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
-    @Column(name = "active", nullable = false)
+    @Column(name = "is_active", nullable = false)
     private boolean active;
 
     public User() {
     }
 
     public User(String id, String firstName, String lastName, String username, String password, boolean active) {
-        this.id = id;
+        this.id = UUID.fromString(id);
         this.firstName = firstName;
         this.lastName = lastName;
         this.username = username;
@@ -46,11 +47,11 @@ public class User {
     }
 
     public String getId() {
-        return id;
+        return id == null ? null : id.toString();
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = id == null ? null : UUID.fromString(id);
     }
 
     public String getFirstName() {
