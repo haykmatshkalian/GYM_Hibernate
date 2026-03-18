@@ -1,11 +1,14 @@
 package com.login.gymcrm.service;
 
+import com.login.gymcrm.dao.TraineeDao;
 import com.login.gymcrm.dao.TrainerDao;
+import com.login.gymcrm.dao.TrainingTypeDao;
 import com.login.gymcrm.model.Trainer;
 import com.login.gymcrm.model.User;
 import com.login.gymcrm.security.Authorized;
 import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
+import com.login.gymcrm.service.exception.ValidationException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import com.login.gymcrm.util.RandomPasswordGenerator;
 import com.login.gymcrm.util.UsernameGenerator;
@@ -22,17 +25,23 @@ public class TrainerService {
     private static final Logger log = LoggerFactory.getLogger(TrainerService.class);
 
     private final TrainerDao trainerDao;
+    private final TraineeDao traineeDao;
+    private final TrainingTypeDao trainingTypeDao;
     private final UuidGenerator idGenerator;
     private final RandomPasswordGenerator passwordGenerator;
     private final UsernameGenerator usernameGenerator;
     private final EntityValidator validator;
 
     public TrainerService(TrainerDao trainerDao,
+                          TraineeDao traineeDao,
+                          TrainingTypeDao trainingTypeDao,
                           UuidGenerator idGenerator,
                           RandomPasswordGenerator passwordGenerator,
                           UsernameGenerator usernameGenerator,
                           EntityValidator validator) {
         this.trainerDao = trainerDao;
+        this.traineeDao = traineeDao;
+        this.trainingTypeDao = trainingTypeDao;
         this.idGenerator = idGenerator;
         this.passwordGenerator = passwordGenerator;
         this.usernameGenerator = usernameGenerator;
@@ -45,17 +54,25 @@ public class TrainerService {
         validator.requireNames(firstName, lastName);
         validator.requireValue(specialization, "Specialization is required");
 
+        String normalizedFirstName = firstName.trim();
+        String normalizedLastName = lastName.trim();
+        String normalizedSpecialization = specialization.trim();
+
+        if (trainingTypeDao.findByName(normalizedSpecialization).isEmpty()) {
+            throw new ValidationException("Specialization must reference an existing training type: " + normalizedSpecialization);
+        }
+
         String profileId = idGenerator.generate();
         String userId = idGenerator.generate();
-        String username = usernameGenerator.generate(firstName, lastName);
+        String username = usernameGenerator.generate(normalizedFirstName, normalizedLastName);
         String password = passwordGenerator.generate(10);
 
-        User user = new User(userId, firstName.trim(), lastName.trim(), username, password, true);
+        User user = new User(userId, normalizedFirstName, normalizedLastName, username, password, true);
 
         Trainer trainer = new Trainer();
         trainer.setId(profileId);
         trainer.setUser(user);
-        trainer.setSpecialization(specialization.trim());
+        trainer.setSpecialization(normalizedSpecialization);
 
         trainerDao.save(trainer);
         log.info("Created trainer profile id={} username={}", profileId, username);
@@ -101,6 +118,24 @@ public class TrainerService {
         return existing;
     }
 
+    @Authorized({Role.ADMIN, Role.TRAINER_MANAGER})
+    @Transactional
+    public Trainer changeStateByUserId(String userId) {
+        validator.requireId(userId, "Trainer userId is required for state change");
+
+        Trainer existing = trainerDao.findByUserId(userId)
+                .orElseThrow(() -> {
+                    log.warn("Trainer not found for state change by userId={}", userId);
+                    return new EntityNotFoundException("Trainer not found by userId: " + userId);
+                });
+
+        existing.setActive(!existing.isActive());
+        trainerDao.update(existing);
+
+        log.info("Changed trainer state by userId={} active={}", userId, existing.isActive());
+        return existing;
+    }
+
     @Authorized({Role.ADMIN, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public Trainer selectProfile(String id) {
@@ -111,6 +146,16 @@ public class TrainerService {
                     return new EntityNotFoundException("Trainer not found: " + id);
                 });
         log.debug("Selected trainer profile id={}", id);
+        return trainer;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINER_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
+    public Trainer selectProfileByUsername(String username) {
+        validator.requireValue(username, "Trainer username is required for select");
+        Trainer trainer = trainerDao.findByUsername(username.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainer not found by username: " + username));
+        log.debug("Selected trainer profile username={}", username);
         return trainer;
     }
 

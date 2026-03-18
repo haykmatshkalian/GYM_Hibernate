@@ -131,7 +131,7 @@ class GymCrmFacadeUnitTest {
         private List<Trainer> returnTrainers = List.of();
 
         private FakeTrainerService() {
-            super(null, null, null, null, null);
+            super(null, null, null, null, null, null, null);
         }
 
         @Override

@@ -11,6 +11,7 @@ import com.login.gymcrm.model.TrainingType;
 import com.login.gymcrm.security.Authorized;
 import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
+import com.login.gymcrm.service.exception.ValidationException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import com.login.gymcrm.util.UuidGenerator;
 import org.apache.commons.lang3.StringUtils;
@@ -88,6 +89,24 @@ public class TrainingService {
         return training;
     }
 
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER})
+    @Transactional
+    public Training createTrainingByUsernames(String traineeUsername,
+                                              String trainerUsername,
+                                              String name,
+                                              LocalDate date,
+                                              int durationMinutes) {
+        validator.requireValue(traineeUsername, "Trainee username is required");
+        validator.requireValue(trainerUsername, "Trainer username is required");
+
+        Trainee trainee = traineeDao.findByUsername(traineeUsername.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainee not found by username: " + traineeUsername));
+        Trainer trainer = trainerDao.findByUsername(trainerUsername.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainer not found by username: " + trainerUsername));
+
+        return createTraining(trainee.getId(), trainer.getId(), name, date, durationMinutes);
+    }
+
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public List<Training> getTraineeTrainingsByCriteria(String traineeUsername,
@@ -147,6 +166,14 @@ public class TrainingService {
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
+    public List<TrainingType> listTrainingTypes() {
+        List<TrainingType> types = trainingTypeDao.findAll();
+        log.debug("Listed training types count={}", types.size());
+        return types;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.TRAINER_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
     public Training selectTraining(String id) {
         validator.requireId(id, "Training id is required for select");
         Training training = trainingDao.findById(id)
@@ -172,12 +199,7 @@ public class TrainingService {
                 : specialization.trim();
 
         return trainingTypeDao.findByName(typeName)
-                .orElseGet(() -> {
-                    TrainingType type = new TrainingType(idGenerator.generate(), typeName);
-                    trainingTypeDao.save(type);
-                    log.debug("Created new training type name={}", typeName);
-                    return type;
-                });
+                .orElseThrow(() -> new ValidationException("Training type is not supported: " + typeName));
     }
 
     private boolean matchesTrainerName(Training training, String normalizedTrainerName) {

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class HibernateTrainingTypeDao implements TrainingTypeDao {
@@ -26,5 +27,20 @@ public class HibernateTrainingTypeDao implements TrainingTypeDao {
                 .setParameter("name", name)
                 .getResultList();
         return result.stream().findFirst();
+    }
+
+    @Override
+    public Optional<TrainingType> findById(String id) {
+        List<TrainingType> result = entityManager.createQuery(
+                        "select tt from TrainingType tt where tt.id = :id", TrainingType.class)
+                .setParameter("id", UUID.fromString(id))
+                .getResultList();
+        return result.stream().findFirst();
+    }
+
+    @Override
+    public List<TrainingType> findAll() {
+        return entityManager.createQuery("select tt from TrainingType tt order by tt.name", TrainingType.class)
+                .getResultList();
     }
 }

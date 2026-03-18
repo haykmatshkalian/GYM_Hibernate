@@ -7,4 +7,6 @@ import java.util.Optional;
 public interface TraineeDao extends CrudDao<Trainee> {
 
     Optional<Trainee> findByUsername(String username);
+
+    Optional<Trainee> findByUserId(String userId);
 }

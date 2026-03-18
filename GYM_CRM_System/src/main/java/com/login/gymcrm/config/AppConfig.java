@@ -19,7 +19,10 @@ import java.util.Properties;
 
 @Configuration
 @ComponentScan(basePackages = "com.login.gymcrm")
-@PropertySource("file:./config/app.properties")
+@PropertySource(value = {
+        "file:./config/app.properties",
+        "classpath:application.properties"
+}, ignoreResourceNotFound = true)
 @EnableTransactionManagement
 @EnableAspectJAutoProxy
 public class AppConfig {

@@ -8,6 +8,7 @@ import com.login.gymcrm.model.User;
 import com.login.gymcrm.security.Authorized;
 import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
+import com.login.gymcrm.service.exception.ValidationException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import com.login.gymcrm.util.RandomPasswordGenerator;
 import com.login.gymcrm.util.UsernameGenerator;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -50,18 +52,29 @@ public class TraineeService {
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
     @Transactional
     public Trainee createProfile(String firstName, String lastName) {
+        return createProfile(firstName, lastName, null, null);
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
+    @Transactional
+    public Trainee createProfile(String firstName, String lastName, LocalDate dateOfBirth, String address) {
         validator.requireNames(firstName, lastName);
+
+        String normalizedFirstName = firstName.trim();
+        String normalizedLastName = lastName.trim();
 
         String profileId = idGenerator.generate();
         String userId = idGenerator.generate();
-        String username = usernameGenerator.generate(firstName, lastName);
+        String username = usernameGenerator.generate(normalizedFirstName, normalizedLastName);
         String password = passwordGenerator.generate(10);
 
-        User user = new User(userId, firstName.trim(), lastName.trim(), username, password, true);
+        User user = new User(userId, normalizedFirstName, normalizedLastName, username, password, true);
 
         Trainee trainee = new Trainee();
         trainee.setId(profileId);
         trainee.setUser(user);
+        trainee.setDateOfBirth(dateOfBirth);
+        trainee.setAddress(address == null || address.isBlank() ? null : address.trim());
 
         traineeDao.save(trainee);
         log.info("Created trainee profile id={} username={}", profileId, username);
@@ -110,6 +123,24 @@ public class TraineeService {
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
     @Transactional
+    public Trainee changeStateByUserId(String userId) {
+        validator.requireId(userId, "Trainee userId is required for state change");
+
+        Trainee existing = traineeDao.findByUserId(userId)
+                .orElseThrow(() -> {
+                    log.warn("Trainee not found for state change by userId={}", userId);
+                    return new EntityNotFoundException("Trainee not found by userId: " + userId);
+                });
+
+        existing.setActive(!existing.isActive());
+        traineeDao.update(existing);
+
+        log.info("Changed trainee state by userId={} active={}", userId, existing.isActive());
+        return existing;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
+    @Transactional
     public Trainee updateTrainersList(String traineeId, List<String> trainerIds) {
         validator.requireId(traineeId, "Trainee id is required for trainer list update");
         validator.validateTrainerIds(trainerIds);
@@ -130,12 +161,34 @@ public class TraineeService {
             newTrainers.add(trainer);
         }
 
-        Set<Trainer> existing = new LinkedHashSet<>(trainee.getTrainers());
-        existing.forEach(trainee::removeTrainer);
-        newTrainers.forEach(trainee::addTrainer);
-
+        replaceTrainers(trainee, newTrainers);
         traineeDao.update(trainee);
         log.info("Updated trainee trainers list traineeId={} trainersCount={}", traineeId, newTrainers.size());
+        return trainee;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
+    @Transactional
+    public Trainee updateTrainersListByUsernames(String traineeUsername, List<String> trainerUsernames) {
+        validator.requireValue(traineeUsername, "Trainee username is required");
+        if (trainerUsernames == null || trainerUsernames.isEmpty()) {
+            throw new ValidationException("At least one trainer username is required");
+        }
+
+        Trainee trainee = traineeDao.findByUsername(traineeUsername.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainee not found by username: " + traineeUsername));
+
+        Set<Trainer> newTrainers = new LinkedHashSet<>();
+        for (String trainerUsername : trainerUsernames) {
+            validator.requireValue(trainerUsername, "Trainer username is required");
+            Trainer trainer = trainerDao.findByUsername(trainerUsername.trim())
+                    .orElseThrow(() -> new EntityNotFoundException("Trainer not found by username: " + trainerUsername));
+            newTrainers.add(trainer);
+        }
+
+        replaceTrainers(trainee, newTrainers);
+        traineeDao.update(trainee);
+        log.info("Updated trainee trainers list traineeUsername={} trainersCount={}", traineeUsername, newTrainers.size());
         return trainee;
     }
 
@@ -155,6 +208,7 @@ public class TraineeService {
                 .collect(Collectors.toSet());
 
         List<Trainer> unassigned = trainerDao.findAll().stream()
+                .filter(Trainer::isActive)
                 .filter(trainer -> !assignedTrainerIds.contains(trainer.getId()))
                 .toList();
 
@@ -177,6 +231,16 @@ public class TraineeService {
         log.info("Deleted trainee profile id={}", id);
     }
 
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
+    @Transactional
+    public void deleteProfileByUsername(String username) {
+        validator.requireValue(username, "Trainee username is required for delete");
+        Trainee trainee = traineeDao.findByUsername(username.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainee not found by username: " + username));
+        traineeDao.deleteById(trainee.getId());
+        log.info("Deleted trainee profile username={} id={}", username, trainee.getId());
+    }
+
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
     public Trainee selectProfile(String id) {
@@ -192,9 +256,25 @@ public class TraineeService {
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.VIEWER})
     @Transactional(readOnly = true)
+    public Trainee selectProfileByUsername(String username) {
+        validator.requireValue(username, "Trainee username is required for select");
+        Trainee trainee = traineeDao.findByUsername(username.trim())
+                .orElseThrow(() -> new EntityNotFoundException("Trainee not found by username: " + username));
+        log.debug("Selected trainee profile username={}", username);
+        return trainee;
+    }
+
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER, Role.VIEWER})
+    @Transactional(readOnly = true)
     public List<Trainee> listAll() {
         List<Trainee> trainees = traineeDao.findAll();
         log.debug("Listed trainee profiles count={}", trainees.size());
         return trainees;
+    }
+
+    private void replaceTrainers(Trainee trainee, Set<Trainer> newTrainers) {
+        Set<Trainer> existing = new LinkedHashSet<>(trainee.getTrainers());
+        existing.forEach(trainee::removeTrainer);
+        newTrainers.forEach(trainee::addTrainer);
     }
 }

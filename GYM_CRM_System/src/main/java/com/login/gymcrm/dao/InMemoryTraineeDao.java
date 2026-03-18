@@ -61,6 +61,21 @@ public class InMemoryTraineeDao implements TraineeDao {
     }
 
     @Override
+    public Optional<Trainee> findByUserId(String userId) {
+        List<Trainee> result = entityManager.createQuery(
+                        """
+                        select distinct t from Trainee t
+                        join fetch t.user u
+                        left join fetch t.trainers tr
+                        left join fetch tr.user
+                        where u.id = :userId
+                        """, Trainee.class)
+                .setParameter("userId", UUID.fromString(userId))
+                .getResultList();
+        return result.stream().findFirst();
+    }
+
+    @Override
     public List<Trainee> findAll() {
         return entityManager.createQuery(
                         """
