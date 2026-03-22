@@ -48,13 +48,11 @@ public class BasicAuthenticationFilter extends OncePerRequestFilter {
         if ("POST".equalsIgnoreCase(method) && "/api/trainers".equals(path)) {
             return true;
         }
-        if ("GET".equalsIgnoreCase(method) && "/api/auth/login".equals(path)) {
-            return true;
-        }
 
         return path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.equals("/swagger-ui.html")
+                || path.startsWith("/actuator")
                 || path.startsWith("/error");
     }
 

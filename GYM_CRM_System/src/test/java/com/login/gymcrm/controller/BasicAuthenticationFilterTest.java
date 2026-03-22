@@ -38,9 +38,35 @@ class BasicAuthenticationFilterTest {
     }
 
     @Test
+    void loginEndpointWithoutAuthorizationReturns401() throws Exception {
+        BasicAuthenticationFilter filter = new BasicAuthenticationFilter(userService, objectMapper());
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/login");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("Missing or invalid Authorization header");
+    }
+
+    @Test
     void publicRegistrationEndpointDoesNotRequireAuthorization() throws Exception {
         BasicAuthenticationFilter filter = new BasicAuthenticationFilter(userService, objectMapper());
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/trainees");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isNotNull();
+    }
+
+    @Test
+    void actuatorEndpointDoesNotRequireAuthorization() throws Exception {
+        BasicAuthenticationFilter filter = new BasicAuthenticationFilter(userService, objectMapper());
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/actuator/health");
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain chain = new MockFilterChain();
 
