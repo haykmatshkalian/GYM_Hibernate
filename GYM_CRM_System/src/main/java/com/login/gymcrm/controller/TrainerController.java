@@ -1,6 +1,5 @@
 package com.login.gymcrm.controller;
 
-import com.login.gymcrm.model.Trainer;
 import com.login.gymcrm.dto.CredentialsResponse;
 import com.login.gymcrm.dto.MessageResponse;
 import com.login.gymcrm.dto.TrainerProfileResponse;
@@ -8,11 +7,14 @@ import com.login.gymcrm.dto.TrainerRegistrationRequest;
 import com.login.gymcrm.dto.TrainerTrainingItemResponse;
 import com.login.gymcrm.dto.UpdateTrainerProfileRequest;
 import com.login.gymcrm.mapper.RestDtoMapper;
+import com.login.gymcrm.model.Trainer;
 import com.login.gymcrm.service.TrainerService;
 import com.login.gymcrm.service.TrainingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -56,7 +58,8 @@ public class TrainerController {
 
     @Operation(summary = "Get Trainer Profile")
     @GetMapping("/{username}")
-    public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable("username") String username) {
+    public ResponseEntity<TrainerProfileResponse> getTrainerProfile(
+            @PathVariable("username") @NotBlank(message = "Username is required") String username) {
         Trainer trainer = trainerService.selectProfileByUsername(username);
         return ResponseEntity.ok(mapper.toTrainerProfileResponse(trainer));
     }
@@ -76,7 +79,7 @@ public class TrainerController {
     @Operation(summary = "Get Trainer Trainings List")
     @GetMapping("/{username}/trainings")
     public ResponseEntity<List<TrainerTrainingItemResponse>> getTrainerTrainings(
-            @PathVariable("username") String username,
+            @PathVariable("username") @NotBlank(message = "Username is required") String username,
             @RequestParam(value = "periodFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodFrom,
             @RequestParam(value = "periodTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodTo,
             @RequestParam(value = "traineeName", required = false) String traineeName) {
@@ -95,7 +98,8 @@ public class TrainerController {
 
     @Operation(summary = "Activate/Deactivate Trainer By UserId (Toggle)")
     @PatchMapping("/user/{userId}/activation")
-    public ResponseEntity<MessageResponse> toggleTrainerActivation(@PathVariable("userId") String userId) {
+    public ResponseEntity<MessageResponse> toggleTrainerActivation(
+            @PathVariable("userId") @Pattern(regexp = "^[0-9a-fA-F-]{36}$", message = "UserId must be a valid UUID") String userId) {
         Trainer updated = trainerService.changeStateByUserId(userId);
         return ResponseEntity.ok(new MessageResponse("Trainer active state is now: " + updated.isActive()));
     }

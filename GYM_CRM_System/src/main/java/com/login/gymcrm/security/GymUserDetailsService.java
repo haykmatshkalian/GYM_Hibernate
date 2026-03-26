@@ -27,7 +27,6 @@ public class GymUserDetailsService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
                 .password(user.getPassword())
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
-                .disabled(!user.isActive())
                 .build();
     }
 }

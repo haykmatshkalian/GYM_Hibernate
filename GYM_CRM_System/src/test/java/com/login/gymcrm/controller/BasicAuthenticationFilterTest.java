@@ -38,7 +38,7 @@ class BasicAuthenticationFilterTest {
     }
 
     @Test
-    void loginEndpointWithoutAuthorizationReturns401() throws Exception {
+    void loginEndpointWithoutAuthorizationIsAllowed() throws Exception {
         BasicAuthenticationFilter filter = new BasicAuthenticationFilter(userService, objectMapper());
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/login");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -46,8 +46,8 @@ class BasicAuthenticationFilterTest {
 
         filter.doFilter(request, response, chain);
 
-        assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("Missing or invalid Authorization header");
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isNotNull();
     }
 
     @Test
@@ -109,6 +109,24 @@ class BasicAuthenticationFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(response.getContentAsString()).contains("Invalid username or password");
+    }
+
+    @Test
+    void activationEndpointDoesNotRequireAuthorizationEvenWithInvalidBasicHeader() throws Exception {
+        BasicAuthenticationFilter filter = new BasicAuthenticationFilter(userService, objectMapper());
+        MockHttpServletRequest request = new MockHttpServletRequest(
+                "PATCH",
+                "/api/trainees/user/7c6a5c67-55a7-4242-8a94-fd7e54d27cfe/activation"
+        );
+        request.addHeader("Authorization", "Basic " + basic("wrong", "wrong"));
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isNotNull();
     }
 
     private String basic(String username, String password) {

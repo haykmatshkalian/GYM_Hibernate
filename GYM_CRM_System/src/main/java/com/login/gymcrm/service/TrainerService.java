@@ -5,6 +5,7 @@ import com.login.gymcrm.dao.TrainerDao;
 import com.login.gymcrm.dao.TrainingTypeDao;
 import com.login.gymcrm.model.Trainer;
 import com.login.gymcrm.model.User;
+import com.login.gymcrm.model.TrainingType;
 import com.login.gymcrm.security.Authorized;
 import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
@@ -58,9 +59,9 @@ public class TrainerService {
         String normalizedLastName = lastName.trim();
         String normalizedSpecialization = specialization.trim();
 
-        if (trainingTypeDao.findByName(normalizedSpecialization).isEmpty()) {
-            throw new ValidationException("Specialization must reference an existing training type: " + normalizedSpecialization);
-        }
+        String canonicalSpecialization = trainingTypeDao.findByName(normalizedSpecialization)
+                .map(TrainingType::getName)
+                .orElseThrow(() -> new ValidationException("Specialization must reference an existing training type: " + normalizedSpecialization));
 
         String profileId = idGenerator.generate();
         String userId = idGenerator.generate();
@@ -72,7 +73,7 @@ public class TrainerService {
         Trainer trainer = new Trainer();
         trainer.setId(profileId);
         trainer.setUser(user);
-        trainer.setSpecialization(normalizedSpecialization);
+        trainer.setSpecialization(canonicalSpecialization);
 
         trainerDao.save(trainer);
         log.info("Created trainer profile id={} username={}", profileId, username);
@@ -92,7 +93,6 @@ public class TrainerService {
 
         existing.setFirstName(updated.getFirstName().trim());
         existing.setLastName(updated.getLastName().trim());
-        existing.setSpecialization(updated.getSpecialization().trim());
         existing.setActive(updated.isActive());
 
         trainerDao.update(existing);
@@ -118,7 +118,6 @@ public class TrainerService {
         return existing;
     }
 
-    @Authorized({Role.ADMIN, Role.TRAINER_MANAGER})
     @Transactional
     public Trainer changeStateByUserId(String userId) {
         validator.requireId(userId, "Trainer userId is required for state change");
