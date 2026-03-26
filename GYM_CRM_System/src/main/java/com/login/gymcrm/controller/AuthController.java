@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,8 +40,9 @@ public class AuthController {
             }
     )
     @GetMapping("/login")
-    public ResponseEntity<MessageResponse> login(@RequestParam("username") String username,
-                                                 @RequestParam("password") String password) {
+    public ResponseEntity<MessageResponse> login(
+            @RequestParam("username") @NotBlank(message = "Username is required") String username,
+            @RequestParam("password") @NotBlank(message = "Password is required") String password) {
         userService.validateCredentials(username, password);
         return ResponseEntity.ok(new MessageResponse("Login successful"));
     }

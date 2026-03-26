@@ -1,6 +1,5 @@
 package com.login.gymcrm.controller;
 
-import com.login.gymcrm.model.Trainee;
 import com.login.gymcrm.dto.CredentialsResponse;
 import com.login.gymcrm.dto.MessageResponse;
 import com.login.gymcrm.dto.TraineeProfileResponse;
@@ -10,6 +9,7 @@ import com.login.gymcrm.dto.TrainerSummaryResponse;
 import com.login.gymcrm.dto.UpdateTraineeProfileRequest;
 import com.login.gymcrm.dto.UpdateTraineeTrainersRequest;
 import com.login.gymcrm.mapper.RestDtoMapper;
+import com.login.gymcrm.model.Trainee;
 import com.login.gymcrm.service.TraineeService;
 import com.login.gymcrm.service.TrainingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -73,7 +75,8 @@ public class TraineeController {
 
     @Operation(summary = "Get Trainee Profile")
     @GetMapping("/{username}")
-    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@PathVariable("username") String username) {
+    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(
+            @PathVariable("username") @NotBlank(message = "Username is required") String username) {
         Trainee trainee = traineeService.selectProfileByUsername(username);
         return ResponseEntity.ok(mapper.toTraineeProfileResponse(trainee));
     }
@@ -94,14 +97,16 @@ public class TraineeController {
 
     @Operation(summary = "Delete Trainee Profile")
     @DeleteMapping("/{username}")
-    public ResponseEntity<MessageResponse> deleteTraineeProfile(@PathVariable("username") String username) {
+    public ResponseEntity<MessageResponse> deleteTraineeProfile(
+            @PathVariable("username") @NotBlank(message = "Username is required") String username) {
         traineeService.deleteProfileByUsername(username);
         return ResponseEntity.ok(new MessageResponse("Trainee profile deleted"));
     }
 
     @Operation(summary = "Get Not Assigned Active Trainers For Trainee")
     @GetMapping("/{username}/unassigned-trainers")
-    public ResponseEntity<List<TrainerSummaryResponse>> getUnassignedActiveTrainers(@PathVariable("username") String username) {
+    public ResponseEntity<List<TrainerSummaryResponse>> getUnassignedActiveTrainers(
+            @PathVariable("username") @NotBlank(message = "Username is required") String username) {
         List<TrainerSummaryResponse> response = traineeService.listUnassignedTrainersByTraineeUsername(username).stream()
                 .map(mapper::toTrainerSummaryResponse)
                 .toList();
@@ -126,7 +131,7 @@ public class TraineeController {
     @Operation(summary = "Get Trainee Trainings List")
     @GetMapping("/{username}/trainings")
     public ResponseEntity<List<TraineeTrainingItemResponse>> getTraineeTrainings(
-            @PathVariable("username") String username,
+            @PathVariable("username") @NotBlank(message = "Username is required") String username,
             @RequestParam(value = "periodFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodFrom,
             @RequestParam(value = "periodTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodTo,
             @RequestParam(value = "trainerName", required = false) String trainerName,
@@ -147,7 +152,8 @@ public class TraineeController {
 
     @Operation(summary = "Activate/Deactivate Trainee By UserId (Toggle)")
     @PatchMapping("/user/{userId}/activation")
-    public ResponseEntity<MessageResponse> toggleTraineeActivation(@PathVariable("userId") String userId) {
+    public ResponseEntity<MessageResponse> toggleTraineeActivation(
+            @PathVariable("userId") @Pattern(regexp = "^[0-9a-fA-F-]{36}$", message = "UserId must be a valid UUID") String userId) {
         Trainee updated = traineeService.changeStateByUserId(userId);
         return ResponseEntity.ok(new MessageResponse("Trainee active state is now: " + updated.isActive()));
     }

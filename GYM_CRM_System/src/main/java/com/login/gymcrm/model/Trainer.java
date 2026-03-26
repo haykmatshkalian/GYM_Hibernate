@@ -31,7 +31,7 @@ public class Trainer {
     @Column(name = "specialization", length = 150)
     private String specialization;
 
-    @OneToMany(mappedBy = "trainer")
+    @OneToMany(mappedBy = "trainer", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Training> trainings = new LinkedHashSet<>();
 
     @ManyToMany(mappedBy = "trainers")
