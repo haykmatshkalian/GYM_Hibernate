@@ -118,6 +118,7 @@ public class TrainerService {
         return existing;
     }
 
+    @Authorized({Role.ADMIN, Role.TRAINER_MANAGER})
     @Transactional
     public Trainer changeStateByUserId(String userId) {
         validator.requireId(userId, "Trainer userId is required for state change");

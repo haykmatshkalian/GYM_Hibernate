@@ -121,6 +121,7 @@ public class TraineeService {
         return existing;
     }
 
+    @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
     @Transactional
     public Trainee changeStateByUserId(String userId) {
         validator.requireId(userId, "Trainee userId is required for state change");
