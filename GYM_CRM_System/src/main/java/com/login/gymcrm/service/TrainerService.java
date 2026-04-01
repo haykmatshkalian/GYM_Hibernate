@@ -4,18 +4,19 @@ import com.login.gymcrm.dao.TraineeDao;
 import com.login.gymcrm.dao.TrainerDao;
 import com.login.gymcrm.dao.TrainingTypeDao;
 import com.login.gymcrm.model.Trainer;
-import com.login.gymcrm.model.User;
 import com.login.gymcrm.model.TrainingType;
+import com.login.gymcrm.model.User;
 import com.login.gymcrm.security.Authorized;
 import com.login.gymcrm.security.Role;
 import com.login.gymcrm.service.exception.EntityNotFoundException;
 import com.login.gymcrm.service.exception.ValidationException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import com.login.gymcrm.util.RandomPasswordGenerator;
-import com.login.gymcrm.util.UsernameGenerator;
 import com.login.gymcrm.util.UuidGenerator;
+import com.login.gymcrm.util.UsernameGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,7 @@ public class TrainerService {
     private final RandomPasswordGenerator passwordGenerator;
     private final UsernameGenerator usernameGenerator;
     private final EntityValidator validator;
+    private final PasswordEncoder passwordEncoder;
 
     public TrainerService(TrainerDao trainerDao,
                           TraineeDao traineeDao,
@@ -39,7 +41,8 @@ public class TrainerService {
                           UuidGenerator idGenerator,
                           RandomPasswordGenerator passwordGenerator,
                           UsernameGenerator usernameGenerator,
-                          EntityValidator validator) {
+                          EntityValidator validator,
+                          PasswordEncoder passwordEncoder) {
         this.trainerDao = trainerDao;
         this.traineeDao = traineeDao;
         this.trainingTypeDao = trainingTypeDao;
@@ -47,6 +50,7 @@ public class TrainerService {
         this.passwordGenerator = passwordGenerator;
         this.usernameGenerator = usernameGenerator;
         this.validator = validator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINER_MANAGER})
@@ -66,9 +70,17 @@ public class TrainerService {
         String profileId = idGenerator.generate();
         String userId = idGenerator.generate();
         String username = usernameGenerator.generate(normalizedFirstName, normalizedLastName);
-        String password = passwordGenerator.generate(10);
+        String generatedPassword = passwordGenerator.generate(10);
 
-        User user = new User(userId, normalizedFirstName, normalizedLastName, username, password, true);
+        User user = new User(
+                userId,
+                normalizedFirstName,
+                normalizedLastName,
+                username,
+                passwordEncoder.encode(generatedPassword),
+                true
+        );
+        user.setGeneratedPassword(generatedPassword);
 
         Trainer trainer = new Trainer();
         trainer.setId(profileId);

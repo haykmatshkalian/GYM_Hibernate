@@ -24,7 +24,8 @@ class TraineeServiceTest {
             Trainee created = service.createProfile("Alice", "Brown");
             assertThat(created.getId()).isNotBlank();
             assertThat(created.getUsername()).startsWith("Alice.Brown");
-            assertThat(created.getPassword()).hasSize(10);
+            assertThat(created.getUser().getGeneratedPassword()).hasSize(10);
+            assertThat(created.getPassword()).startsWith("$2");
             assertThat(created.isActive()).isTrue();
 
             created.setFirstName("Alicia");

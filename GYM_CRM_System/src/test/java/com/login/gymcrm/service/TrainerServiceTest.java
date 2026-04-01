@@ -19,7 +19,8 @@ class TrainerServiceTest {
             Trainer created = service.createProfile("Mark", "Lewis", "Yoga");
             assertThat(created.getId()).isNotBlank();
             assertThat(created.getUsername()).startsWith("Mark.Lewis");
-            assertThat(created.getPassword()).hasSize(10);
+            assertThat(created.getUser().getGeneratedPassword()).hasSize(10);
+            assertThat(created.getPassword()).startsWith("$2");
             assertThat(created.isActive()).isTrue();
 
             Trainer toggled = service.changeState(created.getId());

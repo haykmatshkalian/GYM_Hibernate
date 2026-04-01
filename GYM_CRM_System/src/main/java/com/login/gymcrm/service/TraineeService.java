@@ -15,6 +15,7 @@ import com.login.gymcrm.util.UsernameGenerator;
 import com.login.gymcrm.util.UuidGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,19 +35,22 @@ public class TraineeService {
     private final UsernameGenerator usernameGenerator;
     private final RandomPasswordGenerator passwordGenerator;
     private final EntityValidator validator;
+    private final PasswordEncoder passwordEncoder;
 
     public TraineeService(TraineeDao traineeDao,
                           TrainerDao trainerDao,
                           UuidGenerator idGenerator,
                           UsernameGenerator usernameGenerator,
                           RandomPasswordGenerator passwordGenerator,
-                          EntityValidator validator) {
+                          EntityValidator validator,
+                          PasswordEncoder passwordEncoder) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.idGenerator = idGenerator;
         this.usernameGenerator = usernameGenerator;
         this.passwordGenerator = passwordGenerator;
         this.validator = validator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Authorized({Role.ADMIN, Role.TRAINEE_MANAGER})
@@ -66,9 +70,17 @@ public class TraineeService {
         String profileId = idGenerator.generate();
         String userId = idGenerator.generate();
         String username = usernameGenerator.generate(normalizedFirstName, normalizedLastName);
-        String password = passwordGenerator.generate(10);
+        String generatedPassword = passwordGenerator.generate(10);
 
-        User user = new User(userId, normalizedFirstName, normalizedLastName, username, password, true);
+        User user = new User(
+                userId,
+                normalizedFirstName,
+                normalizedLastName,
+                username,
+                passwordEncoder.encode(generatedPassword),
+                true
+        );
+        user.setGeneratedPassword(generatedPassword);
 
         Trainee trainee = new Trainee();
         trainee.setId(profileId);

@@ -8,6 +8,7 @@ import com.login.gymcrm.service.exception.ValidationException;
 import com.login.gymcrm.service.validator.EntityValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +19,12 @@ public class UserService {
 
     private final UserDao userDao;
     private final EntityValidator validator;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserDao userDao, EntityValidator validator) {
+    public UserService(UserDao userDao, EntityValidator validator, PasswordEncoder passwordEncoder) {
         this.userDao = userDao;
         this.validator = validator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +40,12 @@ public class UserService {
                     return new AuthorizationException("Invalid username or password");
                 });
 
-        if (!user.getPassword().equals(password)) {
+        if (!user.isActive()) {
+            log.warn("Authentication failed: user is inactive username={}", username);
+            throw new AuthorizationException("Invalid username or password");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             log.warn("Authentication failed: invalid password username={}", username);
             throw new AuthorizationException("Invalid username or password");
         }
@@ -63,12 +71,12 @@ public class UserService {
                     return new EntityNotFoundException("User not found by username: " + username);
                 });
 
-        if (!user.getPassword().equals(oldPassword)) {
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             log.warn("Password change failed: old password mismatch username={}", username);
             throw new AuthorizationException("Old password does not match");
         }
 
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
         userDao.update(user);
 
         log.info("Password changed successfully username={}", username);
