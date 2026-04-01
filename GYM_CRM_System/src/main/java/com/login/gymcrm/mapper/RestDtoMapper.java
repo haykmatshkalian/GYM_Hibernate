@@ -1,10 +1,5 @@
 package com.login.gymcrm.mapper;
 
-import com.login.gymcrm.model.Trainee;
-import com.login.gymcrm.model.Trainer;
-import com.login.gymcrm.model.Training;
-import com.login.gymcrm.model.TrainingType;
-import com.login.gymcrm.model.User;
 import com.login.gymcrm.dto.CredentialsResponse;
 import com.login.gymcrm.dto.TraineeProfileResponse;
 import com.login.gymcrm.dto.TraineeSummaryResponse;
@@ -13,6 +8,11 @@ import com.login.gymcrm.dto.TrainerProfileResponse;
 import com.login.gymcrm.dto.TrainerSummaryResponse;
 import com.login.gymcrm.dto.TrainerTrainingItemResponse;
 import com.login.gymcrm.dto.TrainingTypeResponse;
+import com.login.gymcrm.model.Trainee;
+import com.login.gymcrm.model.Trainer;
+import com.login.gymcrm.model.Training;
+import com.login.gymcrm.model.TrainingType;
+import com.login.gymcrm.model.User;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -22,7 +22,11 @@ import java.util.List;
 public class RestDtoMapper {
 
     public CredentialsResponse toCredentialsResponse(User user) {
-        return new CredentialsResponse(user.getUsername(), user.getPassword());
+        String password = user.getGeneratedPassword() != null
+                ? user.getGeneratedPassword()
+                : user.getPassword();
+
+        return new CredentialsResponse(user.getUsername(), password);
     }
 
     public TraineeProfileResponse toTraineeProfileResponse(Trainee trainee) {

@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 
 import java.util.Objects;
@@ -30,6 +31,9 @@ public class User {
 
     @Column(name = "password", nullable = false, length = 255)
     private String password;
+
+    @Transient
+    private String generatedPassword;
 
     @Column(name = "is_active", nullable = false)
     private boolean active;
@@ -84,6 +88,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getGeneratedPassword() {
+        return generatedPassword;
+    }
+
+    public void setGeneratedPassword(String generatedPassword) {
+        this.generatedPassword = generatedPassword;
     }
 
     public boolean isActive() {

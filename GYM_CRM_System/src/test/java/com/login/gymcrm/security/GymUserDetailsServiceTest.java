@@ -39,6 +39,16 @@ class GymUserDetailsServiceTest {
     }
 
     @Test
+    void loadUserByUsernameReturnsDisabledUserDetailsForInactiveUser() {
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "pass", false);
+        when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+
+        UserDetails userDetails = gymUserDetailsService.loadUserByUsername("john");
+
+        assertThat(userDetails.isEnabled()).isFalse();
+    }
+
+    @Test
     void loadUserByUsernameThrowsWhenUserDoesNotExist() {
         when(userDao.findByUsername("john")).thenReturn(Optional.empty());
 

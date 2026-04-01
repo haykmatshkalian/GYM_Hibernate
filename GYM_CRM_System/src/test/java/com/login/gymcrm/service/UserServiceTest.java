@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -31,13 +32,17 @@ class UserServiceTest {
     @Mock
     private EntityValidator validator;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private UserService userService;
 
     @Test
     void validateCredentialsPassesWhenUsernameAndPasswordMatch() {
-        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "pass", true);
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "encoded", true);
         when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("pass", "encoded")).thenReturn(true);
 
         assertThatCode(() -> userService.validateCredentials("john", "pass"))
                 .doesNotThrowAnyException();
@@ -47,8 +52,9 @@ class UserServiceTest {
 
     @Test
     void validateCredentialsThrowsWhenPasswordDoesNotMatch() {
-        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "pass", true);
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "encoded", true);
         when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "encoded")).thenReturn(false);
 
         assertThatThrownBy(() -> userService.validateCredentials("john", "wrong"))
                 .isInstanceOf(AuthorizationException.class)
@@ -56,13 +62,25 @@ class UserServiceTest {
     }
 
     @Test
-    void changePasswordUpdatesExistingUser() {
-        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "old", true);
+    void validateCredentialsThrowsWhenUserIsInactive() {
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "encoded", false);
         when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.validateCredentials("john", "pass"))
+                .isInstanceOf(AuthorizationException.class)
+                .hasMessage("Invalid username or password");
+    }
+
+    @Test
+    void changePasswordUpdatesExistingUser() {
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "encoded-old", true);
+        when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old", "encoded-old")).thenReturn(true);
+        when(passwordEncoder.encode("new")).thenReturn("encoded-new");
 
         userService.changePassword("john", "old", "new");
 
-        assertThat(user.getPassword()).isEqualTo("new");
+        assertThat(user.getPassword()).isEqualTo("encoded-new");
         verify(userDao).update(user);
     }
 
@@ -82,5 +100,16 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.changePassword("john", "old", "new"))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("User not found by username: john");
+    }
+
+    @Test
+    void changePasswordThrowsWhenOldPasswordDoesNotMatch() {
+        User user = new User(UUID.randomUUID().toString(), "John", "Smith", "john", "encoded-old", true);
+        when(userDao.findByUsername("john")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old", "encoded-old")).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.changePassword("john", "old", "new"))
+                .isInstanceOf(AuthorizationException.class)
+                .hasMessage("Old password does not match");
     }
 }
